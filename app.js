@@ -6,6 +6,7 @@ var logger = require('morgan');
 var session = require('express-session');
 var passport = require('passport');
 var OidcStrategy = require('passport-openidconnect').Strategy;
+var GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -34,13 +35,9 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // set up passport
-passport.use('oidc', new OidcStrategy({
-  issuer: 'https://dev-775653.oktapreview.com/oauth2/default',
-  authorizationURL: 'https://dev-775653.oktapreview.com/oauth2/default/v1/authorize',
-  tokenURL: 'https://dev-775653.oktapreview.com/oauth2/default/v1/token',
-  userInfoURL: 'https://dev-775653.oktapreview.com/oauth2/default/v1/userinfo',
-  clientID: '{ClientID}',
-  clientSecret: '{ClientSecret}',
+passport.use('google', new GoogleStrategy({
+  clientID: '966852441551-vanor6vqvnomitk14qei5185tckkh330.apps.googleusercontent.com',
+  clientSecret: 'NA1VNyk6lhjkhjAx79IQyjUL',
   callbackURL: 'http://localhost:3000/authorization-code/callback',
   scope: 'openid profile'
 }, (issuer, sub, profile, accessToken, refreshToken, done) => {
@@ -59,17 +56,26 @@ passport.deserializeUser((obj, next) => {
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
-app.use('/login', passport.authenticate('oidc'));
+//ensure only logged in users can get to the profile page
+function ensureLoggedIn(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+
+  res.redirect('/login')
+}
+
+app.use('/login', passport.authenticate('google'));
 
 app.use('/authorization-code/callback',
-  passport.authenticate('oidc', { failureRedirect: '/error' }),
+  passport.authenticate('google', { failureRedirect: '/error' }),
   (req, res) => {
     res.redirect('/');
   }
 );
 
 //Profile route
-app.use('/profile', (req, res) => {
+app.use('/profile', ensureLoggedIn, (req, res) => {
   res.render('profile', { title: 'Express', user: req.user });
 });
 
@@ -87,19 +93,6 @@ app.use(function(err, req, res, next) {
   // render the error page
   res.status(err.status || 500);
   res.render('error');
-});
-
-//ensure only logged in users can get to the profile page
-function ensureLoggedIn(req, res, next) {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-
-  res.redirect('/login')
-}
-
-app.use('/profile', ensureLoggedIn, (req, res) => {
-  res.render('profile', { title: 'Express', user: req.user });
 });
 
 //Logout
