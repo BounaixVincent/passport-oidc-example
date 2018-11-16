@@ -38,10 +38,15 @@ app.use(passport.session());
 passport.use('google', new GoogleStrategy({
   clientID: '966852441551-vanor6vqvnomitk14qei5185tckkh330.apps.googleusercontent.com',
   clientSecret: 'NA1VNyk6lhjkhjAx79IQyjUL',
-  callbackURL: 'http://localhost:3000/authorization-code/callback',
-  scope: 'openid profile'
-}, (issuer, sub, profile, accessToken, refreshToken, done) => {
-  return done(null, profile);
+  callbackURL: 'http://localhost:3000/auth/google/callback',
+  tokenURL: 'https://www.googleapis.com/oauth2/v3/token'
+}, (accessToken, refreshToken, profile, done) => {
+  if (profile) {
+    user = profile;
+    return done(null, user);
+  } else {
+    return done(null, false);
+  }
 }));
 
 // Tells Passport.js how to serialize the user information into a session
@@ -65,12 +70,15 @@ function ensureLoggedIn(req, res, next) {
   res.redirect('/login')
 }
 
-app.use('/login', passport.authenticate('google'));
+// app.use('/login', passport.authenticate('google'));
 
-app.use('/authorization-code/callback',
+app.get('/auth/google', passport.authenticate('google', { scope: ['https://www.googleapis.com/auth/plus.login'] }));
+
+
+app.use('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/error' }),
   (req, res) => {
-    res.redirect('/');
+    res.redirect('/profile');
   }
 );
 
