@@ -68,6 +68,11 @@ app.use('/authorization-code/callback',
   }
 );
 
+//Profile route
+app.use('/profile', (req, res) => {
+  res.render('profile', { title: 'Express', user: req.user });
+});
+
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));
@@ -82,6 +87,26 @@ app.use(function(err, req, res, next) {
   // render the error page
   res.status(err.status || 500);
   res.render('error');
+});
+
+//ensure only logged in users can get to the profile page
+function ensureLoggedIn(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+
+  res.redirect('/login')
+}
+
+app.use('/profile', ensureLoggedIn, (req, res) => {
+  res.render('profile', { title: 'Express', user: req.user });
+});
+
+//Logout
+app.get('/logout', (req, res) => {
+  req.logout();
+  req.session.destroy();
+  res.redirect('/');
 });
 
 module.exports = app;
